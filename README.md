@@ -4,6 +4,8 @@
   <img width="1000" height="400" src="https://github.com/Gauddel/TakeAndStopApp/blob/master/asset/landingPage.jpeg?raw=true">
 </p>
 
+## [!! Smart Contract Repo Here !!](https://github.com/Gauddel/TakeAndStop)
+
 ## Presentation
 Take&Stop is an decentralized application that take care of your DeFi position decentrally and autonomously. It's can be hard to keep track of your DeFi position, and act with no delay as the market evolved to short or to long on DeFi asset.
 
@@ -33,3 +35,14 @@ With Take&Stop don't need to be an developer or have trust on third party to kee
 <p align="center">
   <img width="1000" height="400" src="https://github.com/Gauddel/TakeAndStopApp/blob/master/asset/landingPage.jpeg?raw=true">
 </p>
+
+### Run App
+Install dependencies :
+```
+npm i
+```
+
+Run application :
+```
+npm start
+```
