@@ -26,7 +26,7 @@ With Take&Stop don't need to be an developer or have trust on third party to kee
 - Chainlink
 
 ## Demo Video
-[![https://github.com/Gauddel/TakeAndStopApp/blob/master/asset/landingPage.jpeg?raw=true]](https://www.youtube.com/watch?v=eLG5wc2aXss "Demo Take&Stop")
+[![https://github.com/Gauddel/TakeAndStopApp/blob/master/asset/landingPage.jpeg?raw=true](http://img.youtube.com/vi/eLG5wc2aXss/0.jpg)](https://www.youtube.com/watch?v=eLG5wc2aXss "Demo Take&Stop")
 ## Application Screen Shot
 
 <p align="center">
