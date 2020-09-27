@@ -22,7 +22,7 @@ With Take&Stop don't need to be an developer or have trust on third party to kee
 - InstaDapp
 - Uniswap
 
-## Demo
+## Demo Video
 
 ## Application Screen Shot
 
