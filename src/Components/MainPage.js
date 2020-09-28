@@ -14,10 +14,15 @@ class MainPage extends React.Component {
 
     connect() {
         EthereumConnexion.GetInstance().setup().then(async () =>{
-            let dsExist = await (new InstaList()).isDSAExist();
-            let dsa = new DefiSmartAccount();
-            let ok =await dsa.gelatoCoreHasAuthPermission()
-            this.props.isDSAExist(ok && dsExist);
+            let canConnect = false;
+            let dsaExist = await (new InstaList()).isDSAExist();
+            canConnect = dsaExist;
+            if (dsaExist) {
+                let dsa = new DefiSmartAccount();
+                let ok =await dsa.gelatoCoreHasAuthPermission();
+                canConnect = canConnect && ok;
+            }
+            this.props.isDSAExist(canConnect);
             this.props.postConnection();
         });
     }
