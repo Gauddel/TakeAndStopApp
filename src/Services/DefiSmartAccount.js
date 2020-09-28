@@ -218,7 +218,7 @@ class DefiSmartAccount {
         let gelatoCore = new ethers.Contract(GelatoCoreAddress, GelatoCoreLib.GelatoCore.abi, EthereumConnexion.GetInstance().provider);
         let withdrawAmount = await gelatoCore.providerFunds(this.dsa.address);
 
-        await this.dsa.cast(
+        let res = await this.dsa.cast(
             [ConnectGelatoAddress],
             [
                 AbiEncoder.AbiEncodeWithSelector({
@@ -239,18 +239,21 @@ class DefiSmartAccount {
             }
         );
 
+        res.wait();
+
         // 2 Use Connect Basic to retrieve fund from DeFi Smart Account
         withdrawAmount = await this.getBalance();
-        await this.dsa.cast(
+        let userAddress = await EthereumConnexion.GetInstance().signer.getAddress();
+        res = await this.dsa.cast(
             [ConnectBasicAddress],
             [
                 AbiEncoder.AbiEncodeWithSelector({
-                    abi: ConnectGelato.abi,
+                    abi: ConnectBasic.abi,
                     functionname: "withdraw",
                     inputs: [
                         ETH,
                         withdrawAmount,
-                        await EthereumConnexion.GetInstance().signer.getAddress(),
+                        userAddress,
                         0,
                         0,
                     ],
@@ -261,6 +264,8 @@ class DefiSmartAccount {
                 gasLimit: 300000,
             }
         );
+
+        res.wait();
     }
 
     async getBalance() {

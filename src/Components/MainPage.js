@@ -17,7 +17,7 @@ class MainPage extends React.Component {
             let dsExist = await (new InstaList()).isDSAExist();
             let dsa = new DefiSmartAccount();
             let ok =await dsa.gelatoCoreHasAuthPermission()
-            this.props.isDSAExist(ok);
+            this.props.isDSAExist(ok && dsExist);
             this.props.postConnection();
         });
     }
