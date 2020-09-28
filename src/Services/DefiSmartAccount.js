@@ -1,8 +1,8 @@
 import { ethers} from 'ethers';
 import GelatoCoreLib from "@gelatonetwork/core";
-import CurrencyPair from './CurrencyPair';
 import InstaAccount from './../pre-compiles/InstaAccount.json';
 import ConnectAuth from './../pre-compiles/ConnectAuth.json';
+import ConnectBasic from './../pre-compiles/ConnectBasic.json';
 import ConnectUniswapV2 from './../pre-compiles/ConnectUniswapV2.json';
 import ConnectGelato from './../pre-compiles/ConnectGelato.json';
 import PriceFeed from './../pre-compiles/PriceFeedMockETHUSD.json';
@@ -12,7 +12,7 @@ import AbiEncoder from './../Utils/AbiEncoder';
 import InstaList from './../Services/InstaList';
 
 // Contract Address.
-const InstaListAddress = "0x4c8a1BEb8a87765788946D6B19C6C6355194AbEb";
+const ConnectBasicAddress = "0x6a31c5982C5Bc5533432913cf06a66b6D3333a95";
 const ConnectAuthAddress = "0xd1aFf9f2aCf800C876c409100D6F39AEa93Fc3D9";
 const ConnectUniswapV2Address = "0x62EbfF47B2Ba3e47796efaE7C51676762dC961c0";
 const GelatoCoreAddress = "0x1d681d76ce96E4d70a88A00EBbcfc1E47808d0b8";
@@ -85,6 +85,9 @@ class DefiSmartAccount {
     }
 
     async gelatoCoreHasAuthPermission() {
+        if (this.dsa === undefined) {
+            await this.setDSA();
+        }
         return await this.dsa.isAuth(GelatoCoreAddress);
     }
 
@@ -93,8 +96,8 @@ class DefiSmartAccount {
             await this.setDSA();
         }
         var userAddress = await EthereumConnexion.GetInstance().signer.getAddress();
-        const GAS_LIMIT = "150000";
-        const GAS_PRICE_CEIL = ethers.utils.parseUnits("1000", "gwei");
+        const GAS_LIMIT = "700000";
+        const GAS_PRICE_CEIL = ethers.utils.parseUnits("200", "gwei");
 
         var gelatoCore = new ethers.Contract(GelatoCoreAddress, GelatoCoreLib.GelatoCore.abi, EthereumConnexion.GetInstance().provider);
         var TASK_AUTOMATION_FUNDS = await gelatoCore.minExecProviderFunds(GAS_LIMIT, GAS_PRICE_CEIL);
@@ -117,7 +120,7 @@ class DefiSmartAccount {
             userAddress,
             {
                 value: TASK_AUTOMATION_FUNDS,
-                gasLimit: 5000000,
+                gasLimit: 300000,
             }
         )
     }
@@ -168,8 +171,8 @@ class DefiSmartAccount {
 
         spells.push(sellEthAction);
 
-        const GAS_LIMIT = "4000000";
-        const GAS_PRICE_CEIL = ethers.utils.parseUnits("1000", "gwei");
+        const GAS_LIMIT = "700000";
+        const GAS_PRICE_CEIL = ethers.utils.parseUnits("200", "gwei");
         const stopLossIfEtherPriceTooLow = new GelatoCoreLib.Task({
             conditions: [stopLossCondition],
             actions: spells,
@@ -201,9 +204,70 @@ class DefiSmartAccount {
             ],
             await EthereumConnexion.GetInstance().signer.getAddress(),
             {
-                gasLimit: 5000000,
+                gasLimit: 200000,
             }
         )
+    }
+
+    async cancel() { // Withdraw funds.
+        if (this.dsa === undefined) {
+            await this.setDSA();
+        }
+        // 1 Do multiUnprovide to withdraw fund from gelato.
+
+        let gelatoCore = new ethers.Contract(GelatoCoreAddress, GelatoCoreLib.GelatoCore.abi, EthereumConnexion.GetInstance().provider);
+        let withdrawAmount = await gelatoCore.providerFunds(this.dsa.address);
+
+        await this.dsa.cast(
+            [ConnectGelatoAddress],
+            [
+                AbiEncoder.AbiEncodeWithSelector({
+                    abi: ConnectGelato.abi,
+                    functionname: "multiUnprovide",
+                    inputs: [
+                        withdrawAmount,
+                        [],
+                        [],
+                        0,
+                        0,
+                    ],
+                }),
+            ],
+            await EthereumConnexion.GetInstance().signer.getAddress(),
+            {
+                gasLimit: 300000,
+            }
+        );
+
+        // 2 Use Connect Basic to retrieve fund from DeFi Smart Account
+        withdrawAmount = await this.getBalance();
+        await this.dsa.cast(
+            [ConnectBasicAddress],
+            [
+                AbiEncoder.AbiEncodeWithSelector({
+                    abi: ConnectGelato.abi,
+                    functionname: "withdraw",
+                    inputs: [
+                        ETH,
+                        withdrawAmount,
+                        await EthereumConnexion.GetInstance().signer.getAddress(),
+                        0,
+                        0,
+                    ],
+                }),
+            ],
+            await EthereumConnexion.GetInstance().signer.getAddress(),
+            {
+                gasLimit: 300000,
+            }
+        );
+    }
+
+    async getBalance() {
+        if (this.dsa === undefined) {
+            await this.setDSA();
+        }
+        return await EthereumConnexion.GetInstance().provider.getBalance(this.dsa.address);
     }
 }
 

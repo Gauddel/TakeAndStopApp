@@ -3,8 +3,14 @@ import { GetEvents } from '../Utils/GetEvents';
 import EthereumConnexion from '../Services/EthereumConnexion';
 import PriceFeed from '../Services/PriceFeed';
 import DefiSmartAccount from '../Services/DefiSmartAccount';
+import ConditionStopLoss from './../pre-compiles/ConditionCompareAssetPriceForStopLoss.json';
+import PriceFeedJson from './../pre-compiles/PriceFeedMockETHUSD.json';
+import AbiEncoder from './../Utils/AbiEncoder';
+import { ethers} from 'ethers';
 
 const DAI_TOKEN_ADDRESS = "0x6b175474e89094c44da98b954eedeac495271d0f"; // MAINNET
+const ConditionStopLossAddress = "0xEd9D452D1755160FeCd6492270Bb67F455b6b78E"; // Need to be filled after the deployement of Condition contract
+const PriceFeedMockETHUSDAddress = "0xB02aFF0C00a60AeB06A7b12c82214e08cCD5499f";
 
 class StopLoss extends React.Component {
     constructor(props) {
@@ -39,6 +45,24 @@ class StopLoss extends React.Component {
         setInterval(this.getAndUpdateOraclePrice, 3 * 1000);
         setInterval(this.getAndUpdateDaiBalance, 3 * 1000);
         setInterval(this.getAndUpdateEtherBalance, 3 * 1000);
+    }
+
+    async getConditionStateMock() {
+        if (EthereumConnexion.GetInstance().provider === undefined) {
+            await EthereumConnexion.GetInstance().setup();
+        }
+
+        var conditionStopLoss = new ethers.Contract(ConditionStopLossAddress, ConditionStopLoss.abi, EthereumConnexion.GetInstance().signer);   
+        var data = await conditionStopLoss.getConditionData(
+            PriceFeedMockETHUSDAddress,
+             AbiEncoder.AbiEncodeWithSelector({
+                abi: PriceFeedJson.abi,
+                functionname: "getLatestPriceToken0", // Hardcoded just for the hackathon
+            }),
+            ethers.utils.parseUnits(String(parseFloat(this.state.limit)), 18)
+        );
+        var res = await conditionStopLoss.ok(0, data, 0);
+        console.log(res);
     }
 
     getAndUpdateOraclePrice() {
@@ -135,7 +159,17 @@ class StopLoss extends React.Component {
 
     async mockPriceAsync() {
         let priceFeed = new PriceFeed();
-        priceFeed.mock(this.state.limit);
+        await priceFeed.mock(this.state.limit);
+        await this.getConditionStateMock();
+    }
+
+    cancel() {
+        this.cancelAsync();
+    }
+    async cancelAsync() {
+        var dsa = new DefiSmartAccount();
+        await dsa.cancel();
+        console.log(await dsa.getBalance())
     }
 
     render() {
@@ -182,6 +216,9 @@ class StopLoss extends React.Component {
         </div>
         <div className="flex items-center justify-center px-6 pb-4">
           <button onClick={() => this.mockPrice()} className="w-full hover:bg-gray-100 text-gray-800 font-semibold hover:font-bold py-2 px-4 border border-gray-200 hover:border-gray-300 rounded text-sm">Mock</button>
+        </div>
+        <div className="flex items-center justify-center px-6 pb-4">
+          <button onClick={() => this.cancel()} className="w-full hover:bg-gray-100 text-gray-800 font-semibold hover:font-bold py-2 px-4 border border-gray-200 hover:border-gray-300 rounded text-sm">Cancel</button>
         </div>
         </div>
       </div>)

@@ -1,6 +1,7 @@
 import React from 'react';
 import EthereumConnexion from './../Services/EthereumConnexion';
 import InstaList from './../Services/InstaList';
+import DefiSmartAccount from './../Services/DefiSmartAccount';
 
 class MainPage extends React.Component {
     constructor(props) {
@@ -14,7 +15,9 @@ class MainPage extends React.Component {
     connect() {
         EthereumConnexion.GetInstance().setup().then(async () =>{
             let dsExist = await (new InstaList()).isDSAExist();
-            this.props.isDSAExist(dsExist);
+            let dsa = new DefiSmartAccount();
+            let ok =await dsa.gelatoCoreHasAuthPermission()
+            this.props.isDSAExist(ok);
             this.props.postConnection();
         });
     }
