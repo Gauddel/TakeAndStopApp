@@ -41,6 +41,13 @@ class PriceFeed {
         // Delta will be 10 ** 18
         return ethers.utils.parseUnits(String(a), 18).sub(ethers.utils.parseUnits(String(b), 18)).add(ethers.utils.parseUnits("10", 18));
     }
+
+    async getOwner() {
+        await this.isEthereumConnexionInit();
+        let signer = await EthereumConnexion.GetInstance().signer;
+        let priceFeed = this.getPriceFeederContract(signer);
+        return await priceFeed.owner();
+    }
 }
 
 export default PriceFeed;

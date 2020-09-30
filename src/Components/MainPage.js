@@ -17,11 +17,11 @@ class MainPage extends React.Component {
             let canConnect = false;
             let dsaExist = await (new InstaList()).isDSAExist();
             canConnect = dsaExist;
-            if (dsaExist) {
-                let dsa = new DefiSmartAccount();
-                let ok =await dsa.gelatoCoreHasAuthPermission();
-                canConnect = canConnect && ok;
-            }
+            // if (dsaExist) {
+            //     let dsa = new DefiSmartAccount();
+            //     let ok =await dsa.gelatoCoreHasAuthPermission();
+            //     canConnect = canConnect && ok;
+            // }
             this.props.isDSAExist(canConnect);
             this.props.postConnection();
         });

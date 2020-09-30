@@ -39,7 +39,8 @@ class InstaList {
         let signer = await EthereumConnexion.GetInstance().signer;
         let userAddress = await signer.getAddress();
         let instaList = this.getInstaListContract(signer);
-        return await instaList.userLink(userAddress);
+        console.log(instaList.userLink);
+        return await instaList.functions.userLink(userAddress);
     }
 }
 

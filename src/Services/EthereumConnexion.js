@@ -26,19 +26,18 @@ class EthereumConnexion {
         })
     }
 
-    async getBalance() {
-        return Math.floor(Number(ethers.utils.formatUnits(await this.signer.getBalance(), 18) * 100)) / 100; // WAD with rouding to 2 decimals
+    async getBalance(accountAddress) {
+        return Math.floor(Number(ethers.utils.formatUnits(await this.signer.provider.getBalance(accountAddress), 18) * 100)) / 100; // WAD with rouding to 2 decimals
     }
 
-    async getTokenBalance(tokenAddress) {
+    async getTokenBalance(accountAddress, tokenAddress) {
         const tokenABI = [
             "function balanceOf(address account) view returns (uint256)",
         ];
 
         var tokenContract = new ethers.Contract(tokenAddress, tokenABI, this.signer);
-        var userAddress = await this.signer.getAddress();
 
-        return await tokenContract.balanceOf(userAddress);
+        return Math.floor(Number(ethers.utils.formatUnits(await tokenContract.balanceOf(accountAddress), 18) * 100)) / 100;;
     }
 }
 

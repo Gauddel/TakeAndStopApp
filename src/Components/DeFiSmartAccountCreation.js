@@ -17,14 +17,16 @@ class DeFiSmartAccountCreation extends React.Component {
 
     createDeFiSmartAccount() {
         var instaIndex = new InstaIndex();
+        // let dsa = new DefiSmartAccount();
 
         instaIndex.buildDeFiSmartAccount().then(async () => {
+        //dsa.setup().then(async () => {
             // Give authorization to Gelato Core Contract.
-            let dsa = new DefiSmartAccount();
-            await dsa.giveAuthToGelatoCoreContract();
+            // let dsa = new DefiSmartAccount();
+            // await dsa.giveAuthToGelatoCoreContract();
             // Set user as Gelato Provider and set the executor of futur task.
-            await dsa.setupGelato();
-            let success = await this.verifyDSACreation() && await dsa.gelatoCoreHasAuthPermission();
+            //await dsa.setupGelato();
+            let success = await this.verifyDSACreation();
             if(!success) {
                 window.alert('DeFi Smart Contract creation has been completed. Some issue appear during the creation process.')
             }

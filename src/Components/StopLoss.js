@@ -3,6 +3,7 @@ import { GetEvents } from '../Utils/GetEvents';
 import EthereumConnexion from '../Services/EthereumConnexion';
 import PriceFeed from '../Services/PriceFeed';
 import DefiSmartAccount from '../Services/DefiSmartAccount';
+import GelatoWrapper from '../Services/GelatoWrapper';
 import ConditionStopLoss from './../pre-compiles/ConditionCompareAssetPriceForStopLoss.json';
 import PriceFeedJson from './../pre-compiles/PriceFeedMockETHUSD.json';
 import AbiEncoder from './../Utils/AbiEncoder';
@@ -19,8 +20,10 @@ class StopLoss extends React.Component {
             token0Balance : 0,
             token1Balance : 0,
             oraclePrice : 0,
+            providerStake : 0,
             limit : null,
-            amount : null
+            amount : null,
+            mockAllowed: ''
         }
 
         this.handleLimitValueChange = this.handleLimitValueChange.bind(this);
@@ -32,19 +35,26 @@ class StopLoss extends React.Component {
         this.getAndUpdateEtherBalance = this.getAndUpdateEtherBalance.bind(this);
         this.getAndUpdateDaiBalance = this.getAndUpdateDaiBalance.bind(this);
         this.getAndUpdateOraclePrice = this.getAndUpdateOraclePrice.bind(this);
+        this.getAndUpdateProviderFunds = this.getAndUpdateProviderFunds.bind(this);
+        this.isUserIsPriceFeederOwnerAsync = this.isUserIsPriceFeederOwnerAsync.bind(this);
+        this.isUserIsPriceFeederOwner = this.isUserIsPriceFeederOwnerAsync.bind(this);
         this.init = this.init.bind(this);
 
         this.init();
+        let dsa = new DefiSmartAccount();
+        dsa.checkExecutorAndModule();
     }
 
     async init() {
         this.getAndUpdateOraclePrice();
         this.getAndUpdateDaiBalance();
         this.getAndUpdateEtherBalance();
+        this.getAndUpdateProviderFunds();
         
         setInterval(this.getAndUpdateOraclePrice, 3 * 1000);
         setInterval(this.getAndUpdateDaiBalance, 3 * 1000);
         setInterval(this.getAndUpdateEtherBalance, 3 * 1000);
+        setInterval(this.getAndUpdateProviderFunds, 3 * 1000);
     }
 
     async getConditionStateMock() {
@@ -63,6 +73,23 @@ class StopLoss extends React.Component {
         );
         var res = await conditionStopLoss.ok(0, data, 0);
         console.log(res);
+    }
+
+    isUserIsPriceFeederOwner() {
+        this.isUserIsPriceFeederOwnerAsync();
+    }
+
+    async isUserIsPriceFeederOwnerAsync() {
+        if (EthereumConnexion.GetInstance().signer === undefined) {
+            await EthereumConnexion.GetInstance().setup();
+        }
+        var priceFeed = new PriceFeed();
+        if (String(await priceFeed.getOwner()) === (await EthereumConnexion.GetInstance().signer.getAddress())) {
+            return ;
+        }
+        this.setState({
+            mockAllowed : 'cursor-not-allowed'
+        });
     }
 
     getAndUpdateOraclePrice() {
@@ -91,6 +118,14 @@ class StopLoss extends React.Component {
         })
         this.forceUpdate();
     }
+    getAndUpdateProviderFunds() {
+        this.getProviderStake().then((stake) => {
+            this.setState({
+                providerStake: String(stake)
+            })
+        })
+        this.forceUpdate();
+    }
 
     async isEthereumConnexionInit() {
         if (EthereumConnexion.GetInstance().signer === undefined) {
@@ -98,14 +133,26 @@ class StopLoss extends React.Component {
         }
     }
 
+    async getProviderStake() {
+        await this.isEthereumConnexionInit();
+        let gelatoWrapper = new GelatoWrapper();
+        var dsa = new DefiSmartAccount();
+        let dsaContract = await dsa.DSA();
+        return await gelatoWrapper.getProviderStake(dsaContract.address);
+    }
+
     async getEtherBalance() { // token0 is ETH
         await this.isEthereumConnexionInit();
-        return await EthereumConnexion.GetInstance().getBalance();
+        var dsa = new DefiSmartAccount();
+        let dsaContract = await dsa.DSA();
+        return await EthereumConnexion.GetInstance().getBalance(dsaContract.address);
     }
 
     async getDaiBalance() {
         await this.isEthereumConnexionInit();
-        return await EthereumConnexion.GetInstance().getTokenBalance(DAI_TOKEN_ADDRESS);
+        var dsa = new DefiSmartAccount();
+        let dsaContract = await dsa.DSA();
+        return await EthereumConnexion.GetInstance().getTokenBalance(dsaContract.address, DAI_TOKEN_ADDRESS);
     }
 
     async getOraclePrice() {
@@ -146,6 +193,7 @@ class StopLoss extends React.Component {
     async submitStopLossAsync() {
         var dsa = new DefiSmartAccount();
         await dsa.submitTaskStopLoss(this.state.limit, this.state.amount);
+        await dsa.check(this.state.limit, this.state.amount);
     }
 
     mockPrice() { 
@@ -170,6 +218,24 @@ class StopLoss extends React.Component {
         var dsa = new DefiSmartAccount();
         await dsa.cancel();
         console.log(await dsa.getBalance())
+    }
+
+    provideFunds() {
+        this.provideFundsAsync();
+    }
+
+    async provideFundsAsync() {
+        var dsa = new DefiSmartAccount();
+        await dsa.provideFunds();
+    }
+
+    retrieveDai() {
+        this.retrieveDaiAsync();
+    }
+
+    async retrieveDaiAsync() {
+        var dsa = new DefiSmartAccount();
+        await dsa.retrieveDAI();
     }
 
     render() {
@@ -197,7 +263,10 @@ class StopLoss extends React.Component {
                     </div>
                  </div>
                  <div className="flex items-center justify-center">
-                    <div className="font-bold text-lg mb-2 text-gray-800">{this.state.oraclePrice} $</div>
+                    <div className="font-bold text-lg mb-2 text-gray-800">ETH/USD {this.state.oraclePrice} $</div>
+                </div>
+                <div className="flex items-center justify-center">
+                    <div className="font-bold text-lg mb-2 text-gray-800">Gelato Credit {this.state.providerStake} Eth</div>
                 </div>
             </div>
         <div className="flex items-center justify-center px-6 py-4">
@@ -212,13 +281,18 @@ class StopLoss extends React.Component {
          id="inline-full-name" type="number" placeholder="Amount"/>
         </div>
         <div className="flex items-center justify-center px-6 py-4">
-          <button onClick={() => this.submitStopLoss()} className="bg-purple bg-opacity-75 w-full hover:bg-purple text-gray-100 font-bold hover:font-bold py-2 px-4 border border-gray-200 hover:border-gray-300 rounded text-lg">Submit</button>
+          <button onClick={() => this.provideFunds()} className="mr-2 w-full hover:bg-gray-100 text-gray-800 font-semibold hover:font-bold py-2 px-4 border border-gray-200 hover:border-gray-300 rounded text-lg">Buy Gelato Credit</button>
+
+          <button onClick={() => this.submitStopLoss()} className="ml-2 bg-purple bg-opacity-100 w-full hover:bg-purple text-gray-100 font-bold hover:font-bold py-2 px-4 border border-gray-200 hover:border-gray-300 rounded text-lg">Submit</button>
         </div>
         <div className="flex items-center justify-center px-6 pb-4">
-          <button onClick={() => this.mockPrice()} className="w-full hover:bg-gray-100 text-gray-800 font-semibold hover:font-bold py-2 px-4 border border-gray-200 hover:border-gray-300 rounded text-sm">Mock</button>
+          <button onClick={() => this.retrieveDai()} className="w-full hover:bg-gray-100 text-gray-800 font-semibold hover:font-bold py-2 px-4 border border-gray-200 hover:border-gray-300 rounded text-lg">Retrieve Dai</button>
         </div>
         <div className="flex items-center justify-center px-6 pb-4">
           <button onClick={() => this.cancel()} className="w-full hover:bg-gray-100 text-gray-800 font-semibold hover:font-bold py-2 px-4 border border-gray-200 hover:border-gray-300 rounded text-sm">Cancel</button>
+        </div>
+        <div className="flex items-center justify-center px-6 pb-4">
+          <button onClick={() => this.mockPrice()} className= {`w-full hover:bg-gray-100 text-gray-800 font-semibold hover:font-bold py-2 px-4 border border-gray-200 hover:border-gray-300 rounded text-sm ${this.state.mockAllowed}`}>Mock</button>
         </div>
         </div>
       </div>)
