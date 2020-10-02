@@ -77,6 +77,14 @@ class DefiSmartAccount {
         return await this.dsa.isAuth(GelatoCoreAddress);
     }
 
+    async getTaskAutomationFunds() {
+        const GAS_LIMIT = "700000";
+        const GAS_PRICE_CEIL = ethers.utils.parseUnits("200", "gwei");
+
+        let gelatoCore = new ethers.Contract(GelatoCoreAddress, GelatoCoreLib.GelatoCore.abi, EthereumConnexion.GetInstance().provider);
+        return await gelatoCore.minExecProviderFunds(GAS_LIMIT, GAS_PRICE_CEIL);
+    }
+
     async provideFunds() { // And Give authorization to Gelato if not already given.
         if (this.dsa === undefined) {
             await this.setDSA();
@@ -90,11 +98,12 @@ class DefiSmartAccount {
         let executor = ethers.constants.AddressZero;
 
         let userAddress = await EthereumConnexion.GetInstance().signer.getAddress();
-        const GAS_LIMIT = "700000";
-        const GAS_PRICE_CEIL = ethers.utils.parseUnits("200", "gwei");
+        // const GAS_LIMIT = "700000";
+        // const GAS_PRICE_CEIL = ethers.utils.parseUnits("200", "gwei");
 
         let gelatoCore = new ethers.Contract(GelatoCoreAddress, GelatoCoreLib.GelatoCore.abi, EthereumConnexion.GetInstance().provider);
-        let TASK_AUTOMATION_FUNDS = await gelatoCore.minExecProviderFunds(GAS_LIMIT, GAS_PRICE_CEIL);
+        // let TASK_AUTOMATION_FUNDS = await gelatoCore.minExecProviderFunds(GAS_LIMIT, GAS_PRICE_CEIL);
+        let TASK_AUTOMATION_FUNDS = await this.getTaskAutomationFunds();
 
         // If Auth to Gelato has not been given add this task.
         if (!(await this.gelatoCoreHasAuthPermission())) { 
@@ -141,7 +150,7 @@ class DefiSmartAccount {
                 gasLimit: 400000,
             }
         )
-        res.wait();
+        return res.wait();
     }
 
     async submitTaskStopLoss(limit, amountToSell) {
@@ -213,7 +222,7 @@ class DefiSmartAccount {
 
         const expiryDate = 0;
         
-        await this.dsa.cast(
+        let res = await this.dsa.cast(
             [ConnectGelatoAddress],
             [
                 AbiEncoder.AbiEncodeWithSelector({
@@ -232,6 +241,7 @@ class DefiSmartAccount {
                 gasLimit: 200000,
             }
         )
+        return res.wait();
     }
 
     async cancel() { // Withdraw funds.
@@ -314,6 +324,16 @@ class DefiSmartAccount {
             await this.setDSA();
         }
         return await EthereumConnexion.GetInstance().provider.getBalance(this.dsa.address);
+    }
+
+    async getProviderFunds() {
+        if (this.dsa === undefined) {
+            await this.setDSA();
+        }
+
+        let gelatoCore = new ethers.Contract(GelatoCoreAddress, GelatoCoreLib.GelatoCore.abi, EthereumConnexion.GetInstance().provider);
+
+        return await gelatoCore.providerFunds(this.dsa.address);
     }
 
     // Check if everything is ok

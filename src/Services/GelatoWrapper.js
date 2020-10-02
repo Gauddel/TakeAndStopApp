@@ -11,11 +11,16 @@ class GelatoWrapper {
             await EthereumConnexion.GetInstance().setup();
         }
     }
-    async getProviderStake(provider) {
+
+    async getProviderStakeBigNb(provider) {
         await this.isEthereumConnexionInit();
 
         let gelatoCore = new ethers.Contract(GelatoCoreAddress, GelatoCoreLib.GelatoCore.abi, EthereumConnexion.GetInstance().provider);
-        return Math.floor(Number(ethers.utils.formatUnits(await gelatoCore.providerFunds(provider), 18) * 100)) / 100; // WAD with rouding to 2 decimals
+        return await gelatoCore.providerFunds(provider);
+    }
+
+    async getProviderStake(provider) {
+        return Math.floor(Number(ethers.utils.formatUnits(await this.getProviderStakeBigNb(provider), 18) * 100)) / 100; // WAD with rouding to 2 decimals
     }
 }
 

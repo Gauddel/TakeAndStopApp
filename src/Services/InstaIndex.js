@@ -22,7 +22,7 @@ class InstaIndex {
         let instaIndex = this.getInstaIndexContract(signer);
         let userAddress = await signer.getAddress();
         let res = await instaIndex.functions.build(userAddress, "1", userAddress);
-        await res.wait();
+        return res.wait();
     }
 }
 

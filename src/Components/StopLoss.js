@@ -8,6 +8,7 @@ import ConditionStopLoss from './../pre-compiles/ConditionCompareAssetPriceForSt
 import PriceFeedJson from './../pre-compiles/PriceFeedMockETHUSD.json';
 import AbiEncoder from './../Utils/AbiEncoder';
 import { ethers} from 'ethers';
+import Button from './Button';
 
 const DAI_TOKEN_ADDRESS = "0x6b175474e89094c44da98b954eedeac495271d0f"; // MAINNET
 const ConditionStopLossAddress = "0xEd9D452D1755160FeCd6492270Bb67F455b6b78E"; // Need to be filled after the deployement of Condition contract
@@ -23,7 +24,39 @@ class StopLoss extends React.Component {
             providerStake : 0,
             limit : null,
             amount : null,
-            mockAllowed: ''
+            mockAllowed: true,
+            creditClass : 'font-bold text-lg mb-2 text-gray-800',
+            creditPrefix : 'Gelato Credit ',
+            // Buy Gelato Credit button property
+            creditBuyBtnLabel : 'Buy Gelato Credit',
+            creditBuyBtnClass : 'mr-2 w-full hover:bg-gray-100 text-gray-800 font-semibold hover:font-bold py-2 px-4 border border-gray-200 hover:border-gray-300 rounded text-lg',
+            creditBuyBtnIsLarge : true,
+            creditBuyBtnIsWaitingReceipt : false,
+            creditBuyBtnIsTransactionValidated : false,
+            // Submit button property
+            submitBtnLabel : 'Submit',
+            submitBtnClass : 'ml-2 bg-purple w-full hover:bg-purple text-gray-100 font-bold hover:font-bold py-2 px-4 border border-gray-200 hover:border-gray-300 rounded text-lg',
+            submitBtnIsLarge : true,
+            submitBtnIsWaitingReceipt : false,
+            submitBtnIsTransactionValidated : false,
+            // Retrieve button property
+            retrieveBtnLabel : 'Retrieve Dai',
+            retrieveBtnClass : 'w-full hover:bg-gray-100 text-gray-800 font-semibold hover:font-bold py-2 px-4 border border-gray-200 hover:border-gray-300 rounded text-lg',
+            retrieveBtnIsLarge : true,
+            retrieveBtnIsWaitingReceipt : false,
+            retrieveBtnIsTransactionValidated : false,
+            // Cancel button property
+            cancelBtnLabel : 'Cancel',
+            cancelBtnClass : 'w-full hover:bg-gray-100 text-gray-800 font-semibold hover:font-bold py-2 px-4 border border-gray-200 hover:border-gray-300 rounded text-sm',
+            cancelBtnIsLarge : false,
+            cancelBtnIsWaitingReceipt : false,
+            cancelBtnIsTransactionValidated : false,
+            // Mock button property
+            mockBtnLabel : 'Mock',
+            mockBtnClass : 'w-full hover:bg-gray-100 text-gray-800 font-semibold hover:font-bold py-2 px-4 border border-gray-200 hover:border-gray-300 rounded text-sm cursor-not-allowed',
+            mockBtnIsLarge : false,
+            mockBtnIsWaitingReceipt : false,
+            mockBtnIsTransactionValidated : false,
         }
 
         this.handleLimitValueChange = this.handleLimitValueChange.bind(this);
@@ -40,9 +73,21 @@ class StopLoss extends React.Component {
         this.isUserIsPriceFeederOwner = this.isUserIsPriceFeederOwnerAsync.bind(this);
         this.init = this.init.bind(this);
 
+        this.buyCreditAction = this.buyCreditAction.bind(this);
+        this.buyCreditCondition = this.buyCreditCondition.bind(this);
+        this.submitAction = this.submitAction.bind(this);
+        this.submitCondition = this.submitCondition.bind(this);
+        this.retrieveAction = this.retrieveAction.bind(this);
+        this.retrieveCondition = this.retrieveCondition.bind(this);
+        this.cancelAction = this.cancelAction.bind(this);
+        this.cancelCondition = this.cancelCondition.bind(this);
+        this.mockAction = this.mockAction.bind(this);
+        this.mockCondition = this.mockCondition.bind(this);
+
         this.init();
         let dsa = new DefiSmartAccount();
         dsa.checkExecutorAndModule();
+        this.isUserIsPriceFeederOwner();
     }
 
     async init() {
@@ -88,7 +133,8 @@ class StopLoss extends React.Component {
             return ;
         }
         this.setState({
-            mockAllowed : 'cursor-not-allowed'
+            mockAllowed : false,
+            mockBtnClass : 'w-full hover:bg-gray-100 text-gray-800 font-semibold hover:font-bold py-2 px-4 border border-gray-200 hover:border-gray-300 rounded text-sm cursor-not-allowed'
         });
     }
 
@@ -119,10 +165,24 @@ class StopLoss extends React.Component {
         this.forceUpdate();
     }
     getAndUpdateProviderFunds() {
-        this.getProviderStake().then((stake) => {
-            this.setState({
-                providerStake: String(stake)
-            })
+        this.getProviderStake().then(async (stake) => {
+            let dsa = new DefiSmartAccount();
+            let minimunFunds = await dsa.getTaskAutomationFunds();
+            let bigNbStake = await this.getProviderStakeBigNb();
+            if (bigNbStake.lt(minimunFunds)) {
+                this.setState({
+                    creditClass : 'font-bold text-lg mb-2 text-red-600',
+                    creditPrefix : 'Gelato Credit Low ',
+                    providerStake: String(stake)
+                })
+            }
+            else {
+                this.setState({
+                    creditClass : 'font-bold text-lg mb-2 text-gray-800',
+                    creditPrefix : 'Gelato Credit ',
+                    providerStake: String(stake)
+                })
+            }
         })
         this.forceUpdate();
     }
@@ -139,6 +199,14 @@ class StopLoss extends React.Component {
         var dsa = new DefiSmartAccount();
         let dsaContract = await dsa.DSA();
         return await gelatoWrapper.getProviderStake(dsaContract.address);
+    }
+
+    async getProviderStakeBigNb() {
+        await this.isEthereumConnexionInit();
+        let gelatoWrapper = new GelatoWrapper();
+        var dsa = new DefiSmartAccount();
+        let dsaContract = await dsa.DSA();
+        return await gelatoWrapper.getProviderStakeBigNb(dsaContract.address);
     }
 
     async getEtherBalance() { // token0 is ETH
@@ -173,6 +241,10 @@ class StopLoss extends React.Component {
     }
 
     submitStopLoss() {
+        this.submitStopLossAsync();
+    }
+
+    async submitStopLossAsync() {
         var errorMsg = '';
         if(this.state.limit === null && parseFloat(this.state.limit) === NaN) {
             errorMsg = 'Limit value is incorrect.';
@@ -183,17 +255,10 @@ class StopLoss extends React.Component {
         }
 
         if (errorMsg !== '') {
-            window.alert(errorMsg);
-            return;
+            throw String(errorMsg);
         }
-
-        this.submitStopLossAsync();
-    }
-
-    async submitStopLossAsync() {
         var dsa = new DefiSmartAccount();
-        await dsa.submitTaskStopLoss(this.state.limit, this.state.amount);
-        await dsa.check(this.state.limit, this.state.amount);
+        return dsa.submitTaskStopLoss(this.state.limit, this.state.amount);
     }
 
     mockPrice() { 
@@ -226,7 +291,7 @@ class StopLoss extends React.Component {
 
     async provideFundsAsync() {
         var dsa = new DefiSmartAccount();
-        await dsa.provideFunds();
+        return dsa.provideFunds();
     }
 
     retrieveDai() {
@@ -237,6 +302,212 @@ class StopLoss extends React.Component {
         var dsa = new DefiSmartAccount();
         await dsa.retrieveDAI();
     }
+
+    // Buttons Dealing
+
+    // Buy Credit Button
+
+    buyCreditCondition() {
+        return true;
+    }
+
+    async buyCreditAction(callback) {
+        
+        //callback();
+        var afterTX = async () => {
+            this.setState({
+                creditBuyBtnIsWaitingReceipt : false,
+                creditBuyBtnIsTransactionValidated : true,
+            }, callback);
+            await this.sleep(2000);
+            this.setState({
+                creditBuyBtnIsWaitingReceipt : false,
+                creditBuyBtnIsTransactionValidated : false,
+            }, callback);
+        }
+
+        this.provideFundsAsync().then(afterTX).catch(() => {
+            this.setState({
+                creditBuyBtnIsWaitingReceipt : false,
+                creditBuyBtnIsTransactionValidated : false,
+            }, callback);
+        });
+        await this.sleep(1000);
+        this.setState({
+            creditBuyBtnIsWaitingReceipt : true
+        }, callback);
+    }
+
+    // Buy Credit Button
+
+    // Submit Button
+
+    async submitCondition() {
+        // Verify if the user has enough credit.
+        let dsa = new DefiSmartAccount();
+        let minimunFunds = await dsa.getTaskAutomationFunds();
+        let gelatoWrapper = new GelatoWrapper();
+        let dsaContract = await dsa.DSA();
+        let providerFunds = await gelatoWrapper.getProviderStakeBigNb(dsaContract.address);
+        if(minimunFunds.gt(providerFunds)) {
+            window.alert('Not enough gelato Credit for executing Action. Execution transaction can be rejected and gas burn uselessly. Buy some gelato credit before submitting.');
+            return false;
+        }
+        return true;
+    }
+
+    async submitAction(callback) {
+        //callback();
+        var afterTX = async () => {
+            this.setState({
+                submitBtnIsWaitingReceipt : false,
+                submitBtnIsTransactionValidated : true,
+            }, callback);
+            await this.sleep(2000);
+            this.setState({
+                submitBtnIsWaitingReceipt : false,
+                submitBtnIsTransactionValidated : false,
+            }, callback);
+            let dsa = new DefiSmartAccount();
+            await dsa.check(this.state.limit, this.state.amount);
+        }
+
+        this.submitStopLossAsync().then(afterTX).catch((err) => {
+            this.setState({
+                submitBtnIsWaitingReceipt : false,
+                submitBtnIsTransactionValidated : false,
+            }, callback);
+            window.alert('check input.');
+        });
+        this.setState({
+            submitBtnIsWaitingReceipt : true
+        }, callback);
+    }
+
+    // Submit Button
+
+    // Retrieve Button
+
+    async retrieveCondition() {
+        var dsa = new DefiSmartAccount();
+        let dsaContract = await dsa.DSA();
+        var balance = await EthereumConnexion.GetInstance().getTokenBalanceBigNb(dsaContract.address, DAI_TOKEN_ADDRESS);
+        if(balance.isZero()) {
+            window.alert("DeFi Smart Account DAI balance is equal to zero. No need to do retrieve action.");
+            return false;
+        }
+        return true;
+    }
+
+    async retrieveAction(callback) {
+        //callback();
+        var afterTX = async () => {
+            this.setState({
+                retrieveBtnIsWaitingReceipt : false,
+                retrieveBtnIsTransactionValidated : true,
+            }, callback);
+            await this.sleep(2000);
+            this.setState({
+                retrieveBtnIsWaitingReceipt : false,
+                retrieveBtnIsTransactionValidated : false,
+            }, callback);
+        }
+
+        this.retrieveDaiAsync().then(afterTX).catch(() => {
+            this.setState({
+                retrieveBtnIsWaitingReceipt : false,
+                retrieveBtnIsTransactionValidated : false,
+            }, callback);
+        });
+        this.setState({
+            retrieveBtnIsWaitingReceipt : true
+        }, callback);
+    }
+
+    // Retrieve Button
+
+    // Cancel Button
+
+    async cancelCondition() {
+        let dsa = new DefiSmartAccount();
+        let dsaContract = await dsa.DSA();
+        let dsaBalance = await EthereumConnexion.GetInstance().getBalanceBigNb(dsaContract.address);
+        let providerFunds = await dsa.getProviderFunds();
+        if(dsaBalance.isZero() && providerFunds.isZero()) {
+            window.alert('Already cancelled.');
+            return false;
+        }
+        return true;
+    }
+
+    async cancelAction(callback) {
+        //callback();
+        var afterTX = async () => {
+            this.setState({
+                cancelBtnIsWaitingReceipt : false,
+                cancelBtnIsTransactionValidated : true,
+            }, callback);
+            await this.sleep(2000);
+            this.setState({
+                cancelBtnIsWaitingReceipt : false,
+                cancelBtnIsTransactionValidated : false,
+            }, callback);
+        }
+
+        this.cancelAsync().then(afterTX).catch(() => {
+            this.setState({
+                cancelBtnIsWaitingReceipt : false,
+                cancelBtnIsTransactionValidated : false,
+            }, callback);
+        });
+        this.setState({
+            cancelBtnIsWaitingReceipt : true
+        }, callback);
+    }
+
+    // Cancel Button
+
+    // Mock Button
+
+    mockCondition() {
+        if (this.state.mockAllowed) {
+            return true;
+        }
+        return false;
+    }
+
+    async mockAction(callback) {
+        //callback();
+        var afterTX = async () => {
+            this.setState({
+                mockBtnIsWaitingReceipt : false,
+                mockBtnIsTransactionValidated : true,
+            }, callback);
+            await this.sleep(2000);
+            this.setState({
+                mockBtnIsWaitingReceipt : false,
+                mockBtnIsTransactionValidated : false,
+            }, callback);
+        }
+
+        this.mockPriceAsync().then(afterTX).catch(() => {
+            this.setState({
+                mockBtnIsWaitingReceipt : false,
+                mockBtnIsTransactionValidated : false,
+            }, callback);
+        });
+        this.setState({
+            mockBtnIsWaitingReceipt : true
+        }, callback);
+    }
+
+    // Mock Button
+
+    async sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    // Buttons Dealing
 
     render() {
         return (<div className="flex items-center justify-center h-screen">
@@ -266,7 +537,7 @@ class StopLoss extends React.Component {
                     <div className="font-bold text-lg mb-2 text-gray-800">ETH/USD {this.state.oraclePrice} $</div>
                 </div>
                 <div className="flex items-center justify-center">
-                    <div className="font-bold text-lg mb-2 text-gray-800">Gelato Credit {this.state.providerStake} Eth</div>
+                    <div className={this.state.creditClass}>{this.state.creditPrefix} {this.state.providerStake} Eth</div>
                 </div>
             </div>
         <div className="flex items-center justify-center px-6 py-4">
@@ -281,18 +552,22 @@ class StopLoss extends React.Component {
          id="inline-full-name" type="number" placeholder="Amount"/>
         </div>
         <div className="flex items-center justify-center px-6 py-4">
-          <button onClick={() => this.provideFunds()} className="mr-2 w-full hover:bg-gray-100 text-gray-800 font-semibold hover:font-bold py-2 px-4 border border-gray-200 hover:border-gray-300 rounded text-lg">Buy Gelato Credit</button>
-
-          <button onClick={() => this.submitStopLoss()} className="ml-2 bg-purple bg-opacity-100 w-full hover:bg-purple text-gray-100 font-bold hover:font-bold py-2 px-4 border border-gray-200 hover:border-gray-300 rounded text-lg">Submit</button>
+          {/* <button onClick={() => this.provideFunds()} className="mr-2 w-full hover:bg-gray-100 text-gray-800 font-semibold hover:font-bold py-2 px-4 border border-gray-200 hover:border-gray-300 rounded text-lg">Buy Gelato Credit</button> */}
+            <Button label={this.state.creditBuyBtnLabel} class={this.state.creditBuyBtnClass} isLarge={this.state.creditBuyBtnIsLarge} action={this.buyCreditAction} condition={this.buyCreditCondition} isTransactionValidated={this.state.creditBuyBtnIsTransactionValidated} isWaitingReceipt={this.state.creditBuyBtnIsWaitingReceipt}/>
+            <Button label={this.state.submitBtnLabel} class={this.state.submitBtnClass} isLarge={this.state.submitBtnIsLarge} action={this.submitAction} condition={this.submitCondition} isTransactionValidated={this.state.submitBtnIsTransactionValidated} isWaitingReceipt={this.state.submitBtnIsWaitingReceipt}/>
+          {/* <button onClick={() => this.submitStopLoss()} className="ml-2 bg-purple bg-opacity-100 w-full hover:bg-purple text-gray-100 font-bold hover:font-bold py-2 px-4 border border-gray-200 hover:border-gray-300 rounded text-lg">Submit</button> */}
         </div>
         <div className="flex items-center justify-center px-6 pb-4">
-          <button onClick={() => this.retrieveDai()} className="w-full hover:bg-gray-100 text-gray-800 font-semibold hover:font-bold py-2 px-4 border border-gray-200 hover:border-gray-300 rounded text-lg">Retrieve Dai</button>
+          {/* <button onClick={() => this.retrieveDai()} className="w-full hover:bg-gray-100 text-gray-800 font-semibold hover:font-bold py-2 px-4 border border-gray-200 hover:border-gray-300 rounded text-lg">Retrieve Dai</button> */}
+          <Button label={this.state.retrieveBtnLabel} class={this.state.retrieveBtnClass} isLarge={this.state.retrieveBtnIsLarge} action={this.retrieveAction} condition={this.retrieveCondition} isTransactionValidated={this.state.retrieveBtnIsTransactionValidated} isWaitingReceipt={this.state.retrieveBtnIsWaitingReceipt}/>
         </div>
         <div className="flex items-center justify-center px-6 pb-4">
-          <button onClick={() => this.cancel()} className="w-full hover:bg-gray-100 text-gray-800 font-semibold hover:font-bold py-2 px-4 border border-gray-200 hover:border-gray-300 rounded text-sm">Cancel</button>
+          {/* <button onClick={() => this.cancel()} className="w-full hover:bg-gray-100 text-gray-800 font-semibold hover:font-bold py-2 px-4 border border-gray-200 hover:border-gray-300 rounded text-sm">Cancel</button> */}
+          <Button label={this.state.cancelBtnLabel} class={this.state.cancelBtnClass} isLarge={this.state.cancelBtnIsLarge} action={this.cancelAction} condition={this.cancelCondition} isTransactionValidated={this.state.cancelBtnIsTransactionValidated} isWaitingReceipt={this.state.cancelBtnIsWaitingReceipt}/>
         </div>
         <div className="flex items-center justify-center px-6 pb-4">
-          <button onClick={() => this.mockPrice()} className= {`w-full hover:bg-gray-100 text-gray-800 font-semibold hover:font-bold py-2 px-4 border border-gray-200 hover:border-gray-300 rounded text-sm ${this.state.mockAllowed}`}>Mock</button>
+          {/* <button onClick={() => this.mockPrice()} className= {`w-full hover:bg-gray-100 text-gray-800 font-semibold hover:font-bold py-2 px-4 border border-gray-200 hover:border-gray-300 rounded text-sm ${this.state.mockAllowed}`}>Mock</button> */}
+          <Button label={this.state.mockBtnLabel} class={this.state.mockBtnClass} isLarge={this.state.mockBtnIsLarge} action={this.mockAction} condition={this.mockCondition} isTransactionValidated={this.state.mockBtnIsTransactionValidated} isWaitingReceipt={this.state.mockBtnIsWaitingReceipt}/>
         </div>
         </div>
       </div>)
