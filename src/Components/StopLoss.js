@@ -117,7 +117,7 @@ class StopLoss extends React.Component {
             ethers.utils.parseUnits(String(parseFloat(this.state.limit)), 18)
         );
         var res = await conditionStopLoss.ok(0, data, 0);
-        console.log(res);
+        return res.wait();
     }
 
     isUserIsPriceFeederOwner() {
@@ -273,7 +273,7 @@ class StopLoss extends React.Component {
     async mockPriceAsync() {
         let priceFeed = new PriceFeed();
         await priceFeed.mock(this.state.limit);
-        await this.getConditionStateMock();
+        return this.getConditionStateMock();
     }
 
     cancel() {
@@ -281,8 +281,7 @@ class StopLoss extends React.Component {
     }
     async cancelAsync() {
         var dsa = new DefiSmartAccount();
-        await dsa.cancel();
-        console.log(await dsa.getBalance())
+        return dsa.cancel();
     }
 
     provideFunds() {
@@ -300,7 +299,7 @@ class StopLoss extends React.Component {
 
     async retrieveDaiAsync() {
         var dsa = new DefiSmartAccount();
-        await dsa.retrieveDAI();
+        return dsa.retrieveDAI();
     }
 
     // Buttons Dealing

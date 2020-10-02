@@ -286,7 +286,7 @@ class DefiSmartAccount {
             }
         );
 
-        res.wait();
+        return res.wait();
     }
 
     async retrieveDAI() {
@@ -316,7 +316,7 @@ class DefiSmartAccount {
                 gasLimit: 300000,
             }
         );
-        res.wait();
+        return res.wait();
     }
 
     async getBalance() {

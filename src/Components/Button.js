@@ -74,7 +74,6 @@ class Button extends React.Component {
     }
 
     async actionAsync() {
-        console.log('Condition : ', await this.props.condition());
         if (await this.props.condition()) {
             this.props.action(this.getClass);
         }
